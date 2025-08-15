@@ -1070,10 +1070,10 @@ export default function ReservationSystem() {
                                 <button
                                   type="button"
                                   className="text-left hover:text-blue-600"
-                                  // onClick={(e) => {
-                                  //   e.stopPropagation()
-                                  //   handleClientHistoryView(client)
-                                  // }}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleClientHistoryView(client)
+                                  }}
                                 >
                                   {client.name}
                                 </button>
@@ -1290,55 +1290,76 @@ export default function ReservationSystem() {
               </div>
 
               {(() => {
-                const { future } = getClientReservations(selectedClientForHistory._id || selectedClientForHistory.id || '')
+                const { past, future } = getClientReservations(selectedClientForHistory._id || selectedClientForHistory.id || '')
                 return (
-                  <div className="space-y-2">
-                    {future.length === 0 ? (
-                      <p className="text-slate-500 text-center py-4">No future appointments</p>
-                    ) : (
-                      future.map((reservation) => (
-                        <div
-                          key={reservation._id || reservation.id || reservation.clientName + reservation.date + reservation.time}
-                          className="border rounded-lg p-3"
-                        >
-                          <div className="flex justify-between items-start">
+                  <Tabs defaultValue="future" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="future">Future Appointments ({future.length})</TabsTrigger>
+                      <TabsTrigger value="past">Past Appointments ({past.length})</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="future" className="space-y-2">
+                      {future.length === 0 ? (
+                        <p className="text-slate-500 text-center py-4">No future appointments</p>
+                      ) : (
+                        future.map((reservation) => (
+                          <div key={reservation._id || reservation.id || reservation.clientName + reservation.date + reservation.time} className="border rounded-lg p-3">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-medium">{reservation.service}</p>
+                                <p className="text-sm text-slate-600">
+                                  {parseLocalDate(reservation.date).toLocaleDateString()} at {reservation.time}
+                                </p>
+                                {reservation.notes && (
+                                  <p className="text-sm text-slate-500 mt-1">{reservation.notes}</p>
+                                )}
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingReservation(reservation)
+                                  setSelectedClient(selectedClientForHistory)
+                                  setFormData({
+                                    clientName: reservation.clientName,
+                                    clientPhone: reservation.clientPhone,
+                                    service: reservation.service,
+                                    notes: reservation.notes || "",
+                                    editDate: reservation.date,
+                                    editTime: reservation.time,
+                                  })
+                                  setIsClientHistoryOpen(false)
+                                  setIsDialogOpen(true)
+                                }}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="past" className="space-y-2">
+                      {past.length === 0 ? (
+                        <p className="text-slate-500 text-center py-4">No past appointments</p>
+                      ) : (
+                        past.map((reservation) => (
+                          <div key={reservation._id || reservation.id || reservation.clientName + reservation.date + reservation.time} className="border rounded-lg p-3 bg-slate-50">
                             <div>
                               <p className="font-medium">{reservation.service}</p>
                               <p className="text-sm text-slate-600">
-                                {parseLocalDate(reservation.date).toLocaleDateString()} at {reservation.time}
+                               {parseLocalDate(reservation.date).toLocaleDateString()} at {reservation.time}
                               </p>
-                              {reservation.notes && (
-                                <p className="text-sm text-slate-500 mt-1">{reservation.notes}</p>
-                              )}
+                              {reservation.notes && <p className="text-sm text-slate-500 mt-1">{reservation.notes}</p>}
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setEditingReservation(reservation)
-                                setSelectedClient(selectedClientForHistory)
-                                setFormData({
-                                  clientName: reservation.clientName,
-                                  clientPhone: reservation.clientPhone,
-                                  service: reservation.service,
-                                  notes: reservation.notes || "",
-                                  editDate: reservation.date,
-                                  editTime: reservation.time,
-                                })
-                                setIsClientHistoryOpen(false)
-                                setIsDialogOpen(true)
-                              }}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
                           </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                        ))
+                      )}
+                    </TabsContent>
+                  </Tabs>
                 )
               })()}
-
             </div>
           )}
         </DialogContent>
