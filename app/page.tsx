@@ -1295,7 +1295,7 @@ export default function ReservationSystem() {
                   <Tabs defaultValue="future" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="future">Future Appointments ({future.length})</TabsTrigger>
-                      <TabsTrigger value="past">Past Appointments ({past.length})</TabsTrigger>
+                      {/* <TabsTrigger value="past">Past Appointments ({past.length})</TabsTrigger> */}
                     </TabsList>
 
                     <TabsContent value="future" className="space-y-2">
@@ -1340,7 +1340,7 @@ export default function ReservationSystem() {
                       )}
                     </TabsContent>
 
-                    <TabsContent value="past" className="space-y-2">
+                    {/* <TabsContent value="past" className="space-y-2">
                       {past.length === 0 ? (
                         <p className="text-slate-500 text-center py-4">No past appointments</p>
                       ) : (
@@ -1356,7 +1356,7 @@ export default function ReservationSystem() {
                           </div>
                         ))
                       )}
-                    </TabsContent>
+                    </TabsContent> */}
                   </Tabs>
                 )
               })()}
