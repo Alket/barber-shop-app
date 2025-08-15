@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useAuth } from "@/contexts/AuthContext"
 import { clientApi, reservationApi, settingsApi, type Client, type Reservation, type BusinessSettings, type Service } from "@/lib/api"
 import { LoginForm } from "@/components/LoginForm"
@@ -44,6 +44,7 @@ import {
   History,
   Eye,
   EyeOff,
+  RefreshCw,
 } from "lucide-react"
 
 
@@ -80,6 +81,10 @@ export default function ReservationSystem() {
   const [clientSearchOpen, setClientSearchOpen] = useState(false)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [isNewClient, setIsNewClient] = useState(false)
+  
+  // Added search state for client filtering
+  const [clientSearchQuery, setClientSearchQuery] = useState("")
+  const [clientDialogSearchQuery, setClientDialogSearchQuery] = useState("")
 
   // Added settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -157,6 +162,24 @@ export default function ReservationSystem() {
       } catch (error) {
         console.error('Error loading data:', error)
         // If data loading fails, seed the database with initial data
+        try {
+          await fetch('/api/seed', { method: 'POST' })
+          const todayStr2 = getDateString(new Date())
+          console.log('[loadData] seeding, then refetching initial data')
+          const [clientsData, reservationsData, settingsData] = await Promise.all([
+            clientApi.getAll(),
+            reservationApi.getAll(todayStr2),
+            settingsApi.get()
+          ])
+          console.log('[loadData] after seed clients:', clientsData.length, 'reservations(today):', reservationsData.length)
+          
+          setClients(clientsData)
+          setReservations(reservationsData)
+          setBusinessSettings(settingsData)
+          setCustomServices(settingsData.services)
+        } catch (seedError) {
+          console.error('Error seeding database:', seedError)
+        }
       } finally {
         setIsLoading(false)
       }
@@ -170,6 +193,7 @@ export default function ReservationSystem() {
 
 
   const handleClientSearch = () => {
+    setClientDialogSearchQuery("")
     setIsClientSearchOpen(true)
   }
 
@@ -189,8 +213,12 @@ export default function ReservationSystem() {
         // Only send the fields that should be updated, excluding _id and id
         const { _id, id, createdAt, updatedAt, ...updateData } = editingClient
         await clientApi.update(editingClient._id || editingClient.id || '', updateData)
-        setClients((prev) => prev.map((c) => (c._id === editingClient._id || c.id === editingClient.id ? editingClient : c)))
-      setEditingClient(null)
+        
+        // Refresh clients from server to ensure we have the latest data
+        const updatedClients = await clientApi.getAll()
+        setClients(updatedClients)
+        
+        setEditingClient(null)
       } catch (error) {
         console.error('Error updating client:', error)
         alert(`Failed to update client: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -217,6 +245,8 @@ export default function ReservationSystem() {
 
   const handleClientSelect = (client: Client) => {
     setSelectedClient(client)
+    setClientSearchQuery("")
+    setClientSearchOpen(false)
     setFormData((prev) => ({
       ...prev,
       clientName: client.name,
@@ -335,7 +365,11 @@ export default function ReservationSystem() {
         lastVisit: getDateString(currentDate),
       }
       const newClient = await clientApi.create(newClientData)
-      setClients((prev) => [...prev, newClient])
+      
+      // Refresh clients from server to ensure we have the latest data
+      const updatedClients = await clientApi.getAll()
+      setClients(updatedClients)
+      
       return newClient
     }
   }
@@ -388,13 +422,6 @@ export default function ReservationSystem() {
       .catch((err) => console.error('Error fetching reservations for date', ymd, err))
       .finally(() => setIsLoadingReservations(false))
   }
-
-  // const goToToday = () => {
-  //   setCurrentDate(new Date())
-  //   setEditingReservation(null)
-  //   setSelectedClient(null)
-  //   setIsDialogOpen(false)
-  // }
 
   const goToToday = () => {
     const today = new Date()
@@ -624,7 +651,32 @@ export default function ReservationSystem() {
     setIsNewClient(true)
     setFormData((prev) => ({ ...prev, clientName: "", clientPhone: "" }))
     setSelectedClient(null)
+    setClientSearchQuery("")
   }
+
+  // Filter clients based on search query
+  const filteredClients = useMemo(() => {
+    if (!clientSearchQuery.trim()) return clients
+    const query = clientSearchQuery.toLowerCase()
+    const filtered = clients.filter(client => 
+      client.name.toLowerCase().includes(query) || 
+      client.phone.toLowerCase().includes(query)
+    )
+    console.log('[filteredClients] Query:', query, 'Total clients:', clients.length, 'Filtered:', filtered.length)
+    return filtered
+  }, [clients, clientSearchQuery])
+
+  // Filter clients for dialog search
+  const filteredDialogClients = useMemo(() => {
+    if (!clientDialogSearchQuery.trim()) return clients
+    const query = clientDialogSearchQuery.toLowerCase()
+    const filtered = clients.filter(client => 
+      client.name.toLowerCase().includes(query) || 
+      client.phone.toLowerCase().includes(query)
+    )
+    console.log('[filteredDialogClients] Query:', query, 'Total clients:', clients.length, 'Filtered:', filtered.length)
+    return filtered
+  }, [clients, clientDialogSearchQuery])
 
   if (!isAuthenticated) {
     return <LoginForm />
@@ -976,7 +1028,12 @@ export default function ReservationSystem() {
             <div>
               <Label>Client *</Label>
               <div className="space-y-2">
-                <Popover open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
+                <Popover open={clientSearchOpen} onOpenChange={(open) => {
+                  setClientSearchOpen(open)
+                  if (!open) {
+                    setClientSearchQuery("")
+                  }
+                }}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -990,7 +1047,11 @@ export default function ReservationSystem() {
                   </PopoverTrigger>
                   <PopoverContent className="w-full p-0">
                     <Command>
-                      <CommandInput placeholder="Search clients..." />
+                      <CommandInput 
+                        placeholder="Search clients..." 
+                        value={clientSearchQuery}
+                        onValueChange={setClientSearchQuery}
+                      />
                       <CommandList>
                         <CommandEmpty>No clients found.</CommandEmpty>
                         <CommandGroup>
@@ -998,7 +1059,7 @@ export default function ReservationSystem() {
                             <UserPlus className="mr-2 h-4 w-4" />
                             Add New Client
                           </CommandItem>
-                          {clients.map((client) => (
+                          {filteredDialogClients.map((client) => (
                             <CommandItem key={client._id || client.id || client.name + client.phone} onSelect={() => handleClientSelect(client)}>
                               <Check
                                 className={`mr-2 h-4 w-4 ${
@@ -1111,22 +1172,52 @@ export default function ReservationSystem() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isClientSearchOpen} onOpenChange={setIsClientSearchOpen}>
+      <Dialog open={isClientSearchOpen} onOpenChange={(open) => {
+        setIsClientSearchOpen(open)
+        if (!open) {
+          setClientDialogSearchQuery("")
+        }
+      }}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Search className="w-5 h-5" />
               Search Clients
             </DialogTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                try {
+                  console.log('[Refresh] Clearing cache and refreshing clients...')
+                  // Force a fresh fetch by adding a cache-busting parameter
+                  const response = await fetch('/api/clients?refresh=' + Date.now())
+                  if (!response.ok) throw new Error('Failed to fetch clients')
+                  const updatedClients = await response.json()
+                  setClients(updatedClients)
+                  console.log('[Refresh] Updated clients:', updatedClients.length)
+                } catch (error) {
+                  console.error('Error refreshing clients:', error)
+                }
+              }}
+              className="ml-auto"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
           </DialogHeader>
 
           <div className="space-y-4">
             <Command>
-              <CommandInput placeholder="Search clients by name or phone..." />
+              <CommandInput 
+                placeholder="Search clients by name or phone..." 
+                value={clientDialogSearchQuery}
+                onValueChange={setClientDialogSearchQuery}
+              />
               <CommandList className="max-h-96">
                 <CommandEmpty>No clients found.</CommandEmpty>
                 <CommandGroup>
-                  {clients.map((client) => (
+                  {filteredDialogClients.map((client) => (
                     <CommandItem key={client._id || client.id || client.name + client.phone} className="p-4">
                       <div className="flex items-center justify-between w-full">
                         <div className="flex-1">

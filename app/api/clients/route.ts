@@ -3,13 +3,20 @@ import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { cache, CACHE_TTL } from '@/lib/cache';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const refresh = searchParams.get('refresh');
+    
     const client = await clientPromise;
     const db = client.db('barbershop');
     const cacheKey = 'all'
-    const cached = cache.get<any[]>('clients', cacheKey)
-    if (cached) return NextResponse.json(cached)
+    
+    // If refresh parameter is provided, bypass cache
+    if (!refresh) {
+      const cached = cache.get<any[]>('clients', cacheKey)
+      if (cached) return NextResponse.json(cached)
+    }
 
     const clients = await db.collection('clients').find({}).toArray();
     cache.set('clients', cacheKey, clients, CACHE_TTL.clients)
