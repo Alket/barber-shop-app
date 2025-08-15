@@ -518,89 +518,94 @@ export default function ReservationSystem() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!formData.clientName || !formData.service) return
-
-    // Added validation to prevent booking conflicts when moving appointments
-    const newDate = formData.editDate || getDateString(currentDate)
-    const newTime = formData.editTime || selectedTimeSlot
-
-    const selectedDate = parseLocalDate(newDate)
-    if (!isWorkingDay(selectedDate)) {
-      alert("Appointments cannot be booked on non-working days. Please select a working day.")
-      return
+    e.preventDefault();
+  
+    if (!formData.clientName || !formData.service) {
+      return;
     }
-
-    // Check if the new slot is already booked (but allow current appointment to stay in same slot)
+  
+    // Added validation to prevent booking conflicts when moving appointments
+    const newDate = formData.editDate || getDateString(currentDate);
+    const newTime = formData.editTime || selectedTimeSlot;
+  
+    const selectedDate = parseLocalDate(newDate);
+    if (!isWorkingDay(selectedDate)) {
+      alert("Appointments cannot be booked on non-working days. Please select a working day.");
+      return;
+    }
+  
+    // Check if the new slot is already booked (but allow current appointment to stay in the same slot)
     const conflictingReservation = reservations.find(
       (res) => res.date === newDate && res.time === newTime && res._id !== editingReservation?._id,
-    )
-
+    );
+  
     if (conflictingReservation) {
       alert(
         `Time slot ${newTime} on ${parseLocalDate(newDate).toLocaleDateString()} is already booked by ${conflictingReservation.clientName}`,
-      )
-      return
+      );
+      return;
     }
-
+  
     try {
-      console.log('Saving reservation:', { editingReservation, formData })
-
-    // Create or update client record
+      console.log("Saving reservation:", { editingReservation, formData });
+  
+      // Create or update client record
       const client = await createOrUpdateClient({
-      name: formData.clientName,
-      phone: formData.clientPhone,
-      notes: formData.notes,
-    })
-
-    const reservationData = {
+        name: formData.clientName,
+        phone: formData.clientPhone,
+        notes: formData.notes,
+      });
+  
+      const reservationData = {
         clientId: client._id || client.id || '',
-      clientName: formData.clientName,
-      clientPhone: formData.clientPhone,
-      service: formData.service,
-      time: newTime,
-      date: newDate,
-      notes: formData.notes,
-    }
-
-    if (editingReservation) {
-        const reservationId = editingReservation._id || editingReservation.id || ''
-        console.log('Updating reservation with ID:', reservationId)
-        await reservationApi.update(reservationId, reservationData)
-        setReservations((prev) => prev.map((res) => {
-          const resId = res._id || res.id || ''
-          const editingId = editingReservation._id || editingReservation.id || ''
-          return resId === editingId ? { ...res, ...reservationData } : res
-        }))
-      // Update current date view if appointment was moved to a different date
-      if (newDate !== getDateString(currentDate)) {
-          setCurrentDate(parseLocalDate(newDate))
+        clientName: formData.clientName,
+        clientPhone: formData.clientPhone,
+        service: formData.service,
+        time: newTime,
+        date: newDate,
+        notes: formData.notes,
+      };
+  
+      if (editingReservation) {
+        const reservationId = editingReservation._id || editingReservation.id || '';
+        console.log("Updating reservation with ID:", reservationId);
+        await reservationApi.update(reservationId, reservationData);
+        setReservations((prev) =>
+          prev.map((res) => {
+            const resId = res._id || res.id || '';
+            const editingId = editingReservation._id || editingReservation.id || '';
+            return resId === editingId ? { ...res, ...reservationData } : res;
+          }),
+        );
+        // Update current date view if appointment was moved to a different date
+        if (newDate !== getDateString(currentDate)) {
+          setCurrentDate(parseLocalDate(newDate));
+        }
+      } else {
+        console.log("Creating new reservation");
+        const newReservation = await reservationApi.create(reservationData);
+        console.log("New reservation created:", newReservation);
+        setReservations((prev) => [...prev, newReservation]);
       }
-    } else {
-        console.log('Creating new reservation')
-        const newReservation = await reservationApi.create(reservationData)
-        console.log('New reservation created:', newReservation)
-        setReservations((prev) => [...prev, newReservation])
-    }
-
-    setIsDialogOpen(false)
-    setFormData({
-      clientName: "",
-      clientPhone: "",
-      service: "",
-      notes: "",
-      editDate: "",
-      editTime: "",
-    })
-    setEditingReservation(null)
-    setSelectedClient(null)
-    setIsNewClient(false)
+  
+      setIsDialogOpen(false);
+      setFormData({
+        clientName: "",
+        clientPhone: "",
+        service: "",
+        notes: "",
+        editDate: "",
+        editTime: "",
+      });
+      setEditingReservation(null);
+      setSelectedClient(null); // Resets the selected client state
+      setIsNewClient(false);
+      setClientSearchQuery(""); // Clears the client search input
     } catch (error) {
-      console.error('Error saving reservation:', error)
-      alert(`Failed to save reservation: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error("Error saving reservation:", error);
+      alert(`Failed to save reservation: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }
+  };  
 
   const handleDelete = async () => {
     if (editingReservation) {
