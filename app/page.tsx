@@ -389,11 +389,28 @@ export default function ReservationSystem() {
       .finally(() => setIsLoadingReservations(false))
   }
 
+  // const goToToday = () => {
+  //   setCurrentDate(new Date())
+  //   setEditingReservation(null)
+  //   setSelectedClient(null)
+  //   setIsDialogOpen(false)
+  // }
+
   const goToToday = () => {
-    setCurrentDate(new Date())
+    const today = new Date()
+    setCurrentDate(today)
     setEditingReservation(null)
     setSelectedClient(null)
     setIsDialogOpen(false)
+    
+    // Fetch reservations for today
+    const todayStr = getDateString(today)
+    setIsLoadingReservations(true)
+    reservationApi
+      .getAll(todayStr)
+      .then((list) => setReservations(list))
+      .catch((err) => console.error('Error fetching reservations for today', todayStr, err))
+      .finally(() => setIsLoadingReservations(false))
   }
 
   const handleTimeSlotClick = (time: string) => {
