@@ -1217,37 +1217,34 @@ export default function ReservationSystem() {
               <CommandList className="max-h-96">
                 <CommandEmpty>No clients found.</CommandEmpty>
                 <CommandGroup>
-  {filteredDialogClients.map((client, index) => (
-    <CommandItem
-      key={client._id || client.id || client.name + client.phone + index} // <- add index
-      className="p-4"
-    >
-      <div className="flex items-center justify-between w-full">
-        <div className="flex-1">
-          <button
-            className="text-left hover:text-blue-600 font-medium"
-            onClick={() => handleClientHistoryView(client)}
-          >
-            {client.name}
-          </button>
-          <p className="text-sm text-slate-600">{client.phone}</p>
-          <p className="text-xs text-slate-500">
-            {client.totalAppointments} visits • Last:{" "}
-            {client.lastVisit ? new Date(client.lastVisit).toLocaleDateString() : "Never"}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => handleClientHistoryView(client)}>
-            <History className="w-4 h-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => handleEditClient(client)}>
-            <Edit className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-    </CommandItem>
-  ))}
-</CommandGroup>
+                  {filteredDialogClients.map((client) => (
+                    <CommandItem key={client._id || client.id || client.name + client.phone} className="p-4">
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex-1">
+                          <button
+                            className="text-left hover:text-blue-600 font-medium"
+                            onClick={() => handleClientHistoryView(client)}
+                          >
+                            {client.name}
+                          </button>
+                          <p className="text-sm text-slate-600">{client.phone}</p>
+                          <p className="text-xs text-slate-500">
+                            {client.totalAppointments} visits • Last:{" "}
+                            {client.lastVisit ? new Date(client.lastVisit).toLocaleDateString() : "Never"}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleClientHistoryView(client)}>
+                            <History className="w-4 h-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleEditClient(client)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
               </CommandList>
             </Command>
           </div>
