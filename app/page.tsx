@@ -197,10 +197,22 @@ export default function ReservationSystem() {
     setIsClientSearchOpen(true)
   }
 
-  const handleClientHistoryView = (client: Client) => {
-    setSelectedClientForHistory(client)
-    setIsClientHistoryOpen(true)
-  }
+  const [allClientReservations, setAllClientReservations] = useState<Reservation[]>([]);
+
+  const handleClientHistoryView = async (client: Client) => {
+    setSelectedClientForHistory(client);
+    setIsClientHistoryOpen(true);
+  
+    if (client._id) {
+      try {
+        const allReservations = await reservationApi.getAll(undefined, client._id);
+        setAllClientReservations(allReservations);
+      } catch (error) {
+        console.error('Error fetching client history:', error);
+        setAllClientReservations([]);
+      }
+    }
+  };
 
   const handleEditClient = (client: Client) => {
     setEditingClient(client)
@@ -226,22 +238,20 @@ export default function ReservationSystem() {
     }
   }
 
-  const getClientReservations = (clientId: string) => {
-    const today = new Date()
-    // normalize to local midnight so comparisons are date-only
-    today.setHours(0, 0, 0, 0)
-    const clientReservations = reservations.filter((res) => res.clientId === clientId)
-
-    const past = clientReservations
+  const getClientReservations = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+  
+    const past = allClientReservations
       .filter((res) => parseLocalDate(res.date) < today)
-      .sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime())
-
-    const future = clientReservations
+      .sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
+  
+    const future = allClientReservations
       .filter((res) => parseLocalDate(res.date) >= today)
-      .sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime())
-
-    return { past, future }
-  }
+      .sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
+  
+    return { past, future };
+  };
 
   const handleClientSelect = (client: Client) => {
     setSelectedClient(client)
@@ -255,7 +265,7 @@ export default function ReservationSystem() {
     setClientSearchOpen(false)
     setIsNewClient(false)
 
-    const { future } = getClientReservations(client._id || client.id || '')
+    const { future } = getClientReservations()
     if (future.length > 0) {
       handleClientHistoryView(client)
     }
@@ -1290,7 +1300,7 @@ export default function ReservationSystem() {
               </div>
 
               {(() => {
-                const { past, future } = getClientReservations(selectedClientForHistory._id || selectedClientForHistory.id || '')
+                const { past, future } = getClientReservations()
                 return (
                   <Tabs defaultValue="future" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
