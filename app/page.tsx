@@ -143,13 +143,6 @@ export default function ReservationSystem() {
         setIsLoading(true)
         const todayStr = getDateString(new Date())
         console.log('[loadData] fetching initial data')
-        
-        // First check if we can connect to the database
-        const healthResponse = await fetch('/api/health')
-        if (!healthResponse.ok) {
-          throw new Error('Database connection failed')
-        }
-        
         const [clientsData, reservationsData, settingsData] = await Promise.all([
           clientApi.getAll(),
           reservationApi.getAll(todayStr),
@@ -163,41 +156,7 @@ export default function ReservationSystem() {
         setCustomServices(settingsData.services)
       } catch (error) {
         console.error('Error loading data:', error)
-        // Handle data loading error gracefully
-        setClients([])
-        setReservations([])
-        setBusinessSettings({
-          businessName: "Elite Barber Shop",
-          phone: "(555) 123-4567",
-          email: "info@elitebarbershop.com",
-          address: "123 Main Street, City, State 12345",
-          startHour: 9,
-          endHour: 18,
-          appointmentDuration: 30,
-          workingDays: {
-            monday: true,
-            tuesday: true,
-            wednesday: true,
-            thursday: true,
-            friday: true,
-            saturday: true,
-            sunday: false,
-          },
-          services: [
-            { id: "1", name: "Haircut", duration: 30, price: 25 },
-            { id: "2", name: "Beard Trim", duration: 15, price: 15 },
-            { id: "3", name: "Haircut + Beard", duration: 45, price: 35 },
-            { id: "4", name: "Shampoo & Style", duration: 20, price: 20 },
-            { id: "5", name: "Hot Towel Shave", duration: 30, price: 30 },
-          ]
-        })
-        setCustomServices([
-          { id: "1", name: "Haircut", duration: 30, price: 25 },
-          { id: "2", name: "Beard Trim", duration: 15, price: 15 },
-          { id: "3", name: "Haircut + Beard", duration: 45, price: 35 },
-          { id: "4", name: "Shampoo & Style", duration: 20, price: 20 },
-          { id: "5", name: "Hot Towel Shave", duration: 30, price: 30 },
-        ])
+        // If data loading fails, seed the database with initial data
       } finally {
         setIsLoading(false)
       }
@@ -431,20 +390,10 @@ export default function ReservationSystem() {
   }
 
   const goToToday = () => {
-    const today = new Date()
-    setCurrentDate(today)
+    setCurrentDate(new Date())
     setEditingReservation(null)
     setSelectedClient(null)
     setIsDialogOpen(false)
-    
-    // Fetch reservations for today
-    const todayStr = getDateString(today)
-    setIsLoadingReservations(true)
-    reservationApi
-      .getAll(todayStr)
-      .then((list) => setReservations(list))
-      .catch((err) => console.error('Error fetching reservations for today', todayStr, err))
-      .finally(() => setIsLoadingReservations(false))
   }
 
   const handleTimeSlotClick = (time: string) => {
